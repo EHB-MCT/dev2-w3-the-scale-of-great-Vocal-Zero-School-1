@@ -1,15 +1,27 @@
-import { getAdjectives } from "./data.js";
 let adjectives = [];
 let sortDirection = "up";
 
-function init() {
-	// Haal de data op en zet deze om naar een object
-	const data = JSON.parse(getAdjectives());
-	adjectives = data;
-
+async function init() {
+	// Haal de data van de API
+	await fetchAdjectives();
 	addSortEvents();
 	addVoteEvents();
 	render();
+
+	// Haal elke 10 seconden de data opnieuw op
+	setInterval(fetchAdjectives, 10000);
+}
+
+async function fetchAdjectives() {
+	try {
+		const response = await fetch("https://dev2-prima.onrender.com/adjectives");
+		const data = await response.json();
+		adjectives = data;
+		sort();
+		render();
+	} catch (error) {
+		console.error("Fout bij het ophalen van adjectieven:", error);
+	}
 }
 
 function addSortEvents() {
@@ -76,22 +88,28 @@ function render() {
 	addVoteEvents(); // Voeg stem-event listeners opnieuw toe na het renderen
 }
 
-function upVote(value) {
-	updateScore(value, 0.1);
+async function upVote(value) {
+	// Upvote via de API
+	await updateVote(value, "upvote");
 	render();
 }
 
-function downVote(value) {
-	updateScore(value, -0.1);
+async function downVote(value) {
+	// Downvote via de API
+	await updateVote(value, "downvote");
 	render();
 }
 
-function updateScore(word, scoreChange) {
-	const foundIndex = adjectives.findIndex((item) => item.word === word);
-	if (foundIndex !== -1) {
-		adjectives[foundIndex].score += scoreChange;
-		adjectives[foundIndex].score = Math.round(adjectives[foundIndex].score * 10) / 10; // Rond af op 1 decimaal
-	}
+async function updateVote(word, voteType) {
+	const response = await fetch(`https://dev2-prima.onrender.com/${voteType}/${word}`, {
+		method: "GET",
+	});
+
+	// We hoeven hier geen score bij te houden omdat de API het voor ons regelt
+	const data = await response.json();
+
+	// Bijwerken van de lokale data na de update van de API
+	fetchAdjectives();
 }
 
 init(); // Roep init aan om het proces te starten
